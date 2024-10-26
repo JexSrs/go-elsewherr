@@ -1,0 +1,9 @@
+services:
+  go-elsewherr:
+    container_name: go-elsewherr
+    image: go-elsewherr
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    restart: no
+    env_file: ".env"
