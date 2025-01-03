@@ -26,7 +26,11 @@ type Entry struct {
 }
 
 func Get[T any](m map[string]interface{}, key string) T {
-	dt, _ := m[key]
+	dt, exists := m[key]
+	if !exists || dt == nil {
+		var zero T
+		return zero
+	}
 	return dt.(T)
 }
 
