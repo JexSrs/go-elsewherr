@@ -138,9 +138,6 @@ const (
 )
 
 type JustWatch struct {
-	Token string
-	Type  string
-
 	rootUrl string
 	client  *http.Client
 }
@@ -165,10 +162,8 @@ type JustWatchTitleResponse struct {
 	} `json:"data"`
 }
 
-func NewJustWatch(token string, _type string) *JustWatch {
+func NewJustWatch() *JustWatch {
 	return &JustWatch{
-		Token:   token,
-		Type:    _type,
 		rootUrl: "https://apis.justwatch.com/graphql",
 		client:  &http.Client{},
 	}

@@ -153,7 +153,7 @@ func (r *Sonarr) GetSource() sources.Source {
 	if environment.Env.SonarrSource == "tmdb" {
 		return sources.NewTMDB(environment.Env.TMDBKey, "tv")
 	} else if environment.Env.SonarrSource == "justwatch" {
-		return sources.NewJustWatch(environment.Env.JustWatchKey, "show")
+		return sources.NewJustWatch()
 	}
 
 	panic(fmt.Errorf("unknown sonarr source %s", environment.Env.SonarrSource))

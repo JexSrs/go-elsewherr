@@ -153,7 +153,7 @@ func (r *Radarr) GetSource() sources.Source {
 	if environment.Env.RadarrSource == "tmdb" {
 		return sources.NewTMDB(environment.Env.TMDBKey, "movie")
 	} else if environment.Env.RadarrSource == "justwatch" {
-		return sources.NewJustWatch(environment.Env.JustWatchKey, "movie")
+		return sources.NewJustWatch()
 	}
 
 	panic(fmt.Errorf("unknown sonarr source %s", environment.Env.RadarrSource))

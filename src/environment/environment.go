@@ -11,8 +11,7 @@ import (
 type Environment struct {
 	Debug bool
 
-	TMDBKey      string
-	JustWatchKey string
+	TMDBKey string
 
 	RadarrUrl    string
 	RadarrKey    string
@@ -45,11 +44,6 @@ func init() {
 	tmdbKey, isSet := os.LookupEnv("TMDB_KEY")
 	if isSet {
 		Env.TMDBKey = tmdbKey
-	}
-
-	justWatchKey, isSet := os.LookupEnv("JUSTWATCH_KEY")
-	if isSet {
-		Env.JustWatchKey = justWatchKey
 	}
 
 	radarrUrl, isSet := os.LookupEnv("RADARR_URL")
