@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/JexSrs/go-elsewherr/src/environment"
 	"github.com/JexSrs/go-elsewherr/src/sources"
+	"github.com/JexSrs/go-elsewherr/src/utils"
 	"io"
 	"net/http"
 )
@@ -13,6 +14,7 @@ import (
 type Sonarr struct {
 	URL    string
 	APIKey string
+	client *http.Client
 }
 
 type SonarrTag struct {
@@ -21,7 +23,11 @@ type SonarrTag struct {
 }
 
 func NewSonarr(url, apiKey string) *Sonarr {
-	return &Sonarr{url, apiKey}
+	return &Sonarr{
+		url,
+		apiKey,
+		&http.Client{},
+	}
 }
 
 func (r *Sonarr) Do(method, path string, data map[string]any) (*http.Response, error) {
@@ -43,53 +49,52 @@ func (r *Sonarr) Do(method, path string, data map[string]any) (*http.Response, e
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Api-Key", r.APIKey)
 
-	client := &http.Client{}
-	return client.Do(req)
+	return r.client.Do(req)
 }
 
-func (r *Sonarr) CreateTag(tag string) (*Tag, error) {
+func (r *Sonarr) CreateTag(tag string) (*utils.Tag, error) {
 	resp, err := r.Do(http.MethodPost, "/api/v3/tag", map[string]any{"label": tag, "id": 0})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
 		dt, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get response: %d %s", resp.StatusCode, string(dt))
+		return nil, fmt.Errorf("sonarr: request error: %d %s", resp.StatusCode, string(dt))
 	}
 
 	var t2 RadarrTag
 	if err := json.NewDecoder(resp.Body).Decode(&t2); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 
-	return &Tag{
+	return &utils.Tag{
 		ID:   t2.ID,
 		Name: t2.Label,
 	}, nil
 }
 
-func (r *Sonarr) GetAllTags() ([]Tag, error) {
+func (r *Sonarr) GetAllTags() ([]utils.Tag, error) {
 	resp, err := r.Do(http.MethodGet, "/api/v3/tag", nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		dt, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get response: %d %s", resp.StatusCode, string(dt))
+		return nil, fmt.Errorf("sonarr: request error: %d %s", resp.StatusCode, string(dt))
 	}
 
 	var tags []RadarrTag
 	if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 
-	res := make([]Tag, len(tags))
+	res := make([]utils.Tag, len(tags))
 	for i, t := range tags {
-		res[i] = Tag{
+		res[i] = utils.Tag{
 			ID:   t.ID,
 			Name: t.Label,
 		}
@@ -97,53 +102,59 @@ func (r *Sonarr) GetAllTags() ([]Tag, error) {
 	return res, nil
 }
 
-func (r *Sonarr) GetEntries() ([]Entry, error) {
+func (r *Sonarr) GetEntries() ([]utils.Entry, error) {
 	resp, err := r.Do(http.MethodGet, "/api/v3/series", nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		dt, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get response: %d %s", resp.StatusCode, string(dt))
+		return nil, fmt.Errorf("sonarr: request error: %d %s", resp.StatusCode, string(dt))
 	}
 
 	var items []map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sonarr: request error: %v", err)
 	}
 
-	res := make([]Entry, len(items))
+	res := make([]utils.Entry, len(items))
 	for i, item := range items {
-		res[i] = Entry{
-			ID:       int(Get[float64](item, "id")),
-			Title:    Get[string](item, "title"),
-			IMDBID:   Get[string](item, "imdbId"),
-			TMDBID:   int(Get[float64](item, "tmdbId")),
-			Tags:     ToIntArray(Get[[]interface{}](item, "tags")),
+		res[i] = utils.Entry{
+			ID:       int(utils.Get[float64](item, "id")),
+			Title:    utils.Get[string](item, "title"),
+			IMDBID:   utils.Get[string](item, "imdbId"),
+			TMDBID:   int(utils.Get[float64](item, "tmdbId")),
+			Tags:     utils.ToIntArray(utils.Get[[]interface{}](item, "tags")),
 			Original: item,
 		}
 	}
 	return res, nil
 }
 
-func (r *Sonarr) UpdateEntryTags(entry Entry) error {
+func (r *Sonarr) UpdateEntryTags(entry utils.Entry) error {
 	entry.Original["tags"] = entry.Tags
 
 	resp, err := r.Do(http.MethodPut, fmt.Sprintf("/api/v3/series/%d", entry.ID), entry.Original)
 	if err != nil {
-		return err
+		return fmt.Errorf("sonarr: request error: %v", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode > 299 {
+	if resp.StatusCode >= 300 {
 		dt, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to get response: %d %s", resp.StatusCode, string(dt))
+		return fmt.Errorf("sonarr: request error: %d %s", resp.StatusCode, string(dt))
 	}
 	return nil
 }
 
 func (r *Sonarr) GetSource() sources.Source {
-	return sources.NewTMDB(environment.Env.TMDBKey, "tv")
+	if environment.Env.SonarrSource == "tmdb" {
+		return sources.NewTMDB(environment.Env.TMDBKey, "tv")
+	} else if environment.Env.SonarrSource == "justwatch" {
+		return sources.NewJustWatch(environment.Env.JustWatchKey, "show")
+	}
+
+	panic(fmt.Errorf("unknown sonarr source %s", environment.Env.SonarrSource))
 }

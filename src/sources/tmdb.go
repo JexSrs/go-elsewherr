@@ -3,13 +3,15 @@ package sources
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/JexSrs/go-elsewherr/src/utils"
 	"io"
 	"net/http"
 )
 
 type TMDB struct {
 	APIKey string
-	Path   string
+	Type   string
+	client *http.Client
 }
 
 type TmdbResponse struct {
@@ -24,24 +26,27 @@ type TmdbProvider struct {
 	Name string `json:"provider_name"`
 }
 
-func NewTMDB(apiKey, path string) *TMDB {
-	return &TMDB{apiKey, path}
+func NewTMDB(apiKey, _type string) *TMDB {
+	return &TMDB{
+		apiKey,
+		_type,
+		&http.Client{},
+	}
 }
 
-func (t *TMDB) GetProvidersFor(entryId any, country string) ([]string, error) {
-	url := fmt.Sprintf("https://api.themoviedb.org/3/%s/%d/watch/providers?api_key=%s", t.Path, entryId, t.APIKey)
+func (t *TMDB) GetProvidersFor(entry utils.Entry, country string) ([]string, error) {
+	url := fmt.Sprintf("https://api.themoviedb.org/3/%s/%d/watch/providers?api_key=%s", t.Type, entry.TMDBID, t.APIKey)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tmdb: request error: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := t.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tmdb: request error: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -53,19 +58,19 @@ func (t *TMDB) GetProvidersFor(entryId any, country string) ([]string, error) {
 		}
 
 		dt, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get response: %d %s", resp.StatusCode, string(dt))
+		return nil, fmt.Errorf("tmdb: request error: %d %s", resp.StatusCode, string(dt))
 	}
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tmdb: request error: %v", err)
 	}
 
 	// Unmarshal the JSON response into the TmdbResponse struct
 	var res TmdbResponse
 	if err := json.Unmarshal(body, &res); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tmdb: request error: %v", err)
 	}
 
 	data, exists := res.Results[country]

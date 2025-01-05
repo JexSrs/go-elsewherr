@@ -11,9 +11,12 @@ and add a tag against the movie if it is.
 
 ### How does it work?
 
-The script will check The Movie Database (https://www.themoviedb.org/) via their API,
-which in turn uses Just Watch (https://www.justwatch.com/), to get all streaming services each movie is on.
-It then adds this tag in Radarr (or Sonarr).
+The script will check from a specific source via their API to get all
+streaming services each movie (or tv show) is on. It then adds this tag in Radarr (or Sonarr).
+
+Available sources:
+- [Just Watch](https://www.justwatch.com/)
+- [TMDB](https://www.themoviedb.org/)
 
 ### Why?
 
@@ -27,7 +30,7 @@ See the [.env.example](.env.example) file (read the comments).
 
 ## Setup
 
-Copy [.env.example](.env.example) to `.env` and use the `docker compose` command to create and start the container.
+Copy [.env.example](.env.example) to `.env` (do not forget to populate it) and use the `docker compose` command to create and start the container.
 ```shell
 docker compose up --build
 ```
