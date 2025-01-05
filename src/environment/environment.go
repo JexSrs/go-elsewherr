@@ -13,11 +13,13 @@ type Environment struct {
 
 	TMDBKey string
 
-	RadarrUrl string
-	RadarrKey string
+	RadarrUrl    string
+	RadarrKey    string
+	RadarrSource string
 
-	SonarrUrl string
-	SonarrKey string
+	SonarrUrl    string
+	SonarrKey    string
+	SonarrSource string
 
 	TagPrefix string
 	Country   string
@@ -26,7 +28,11 @@ type Environment struct {
 var Env = Environment{
 	Debug: false,
 
-	TagPrefix: "go-elsewherr-",
+	TagPrefix: "go-",
+
+	RadarrSource: "tmdb",
+
+	SonarrSource: "tmdb",
 }
 
 func init() {
@@ -50,6 +56,11 @@ func init() {
 		Env.RadarrKey = radarrKey
 	}
 
+	radarrSource, isSet := os.LookupEnv("RADARR_SOURCE")
+	if isSet {
+		Env.RadarrSource = radarrSource
+	}
+
 	sonarrUrl, isSet := os.LookupEnv("SONARR_URL")
 	if isSet {
 		Env.SonarrUrl = sonarrUrl
@@ -58,6 +69,11 @@ func init() {
 	sonarrKey, isSet := os.LookupEnv("SONARR_KEY")
 	if isSet {
 		Env.SonarrKey = sonarrKey
+	}
+
+	sonarrSource, isSet := os.LookupEnv("SONARR_SOURCE")
+	if isSet {
+		Env.SonarrSource = sonarrSource
 	}
 
 	tagPrefix, isSet := os.LookupEnv("TAG_PREFIX")

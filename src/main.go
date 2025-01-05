@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/JexSrs/go-elsewherr/src/arr"
 	. "github.com/JexSrs/go-elsewherr/src/environment"
+	"github.com/JexSrs/go-elsewherr/src/utils"
+	"log"
 	"strings"
 )
 
@@ -12,20 +14,20 @@ func main() {
 	fmt.Println("Starting go-elsewherr...")
 
 	if len(Env.RadarrUrl) != 0 {
-		fmt.Println("Radarr configuration found")
+		fmt.Println("\nRadarr configuration found")
 		radarr := arr.NewRadarr(Env.RadarrUrl, Env.RadarrKey)
 
 		if err := Sync(radarr); err != nil {
-			fmt.Printf("Failed with error: %v\n", err)
+			log.Fatal(err)
 		}
 	}
 
 	if len(Env.SonarrUrl) != 0 {
-		fmt.Println("Sonarr configuration found")
+		fmt.Println("\nSonarr configuration found")
 		sonarr := arr.NewSonarr(Env.SonarrUrl, Env.SonarrKey)
 
 		if err := Sync(sonarr); err != nil {
-			fmt.Printf("Failed with error: %v\n", err)
+			log.Fatal(err)
 		}
 	}
 
@@ -53,11 +55,12 @@ func Sync(app arr.Arr) error {
 	}
 	debug("Found %d entries", len(entries))
 
+	// TODO: Add go routines for parallel requests
 	for _, entry := range entries {
 		debug("Processing entry: %s (TMDB: %d, IMDB: %s)", entry.Title, entry.TMDBID, entry.IMDBID)
 
 		debug("- Requesting providers for country %s", Env.Country)
-		providers, err := source.GetProvidersFor(entry.TMDBID, Env.Country)
+		providers, err := source.GetProvidersFor(entry, Env.Country)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve providers: %w", err)
 		}
@@ -66,20 +69,20 @@ func Sync(app arr.Arr) error {
 
 		// Remove tags
 		debug("- Removing old tags")
-		entry.Tags = Filter(entry.Tags, func(i int) bool {
-			arrTagIdx := FindIndex(arrTags, func(tag arr.Tag) bool { return tag.ID == i })
+		entry.Tags = utils.Filter(entry.Tags, func(i int) bool {
+			arrTagIdx := utils.FindIndex(arrTags, func(tag utils.Tag) bool { return tag.ID == i })
 			return !strings.HasPrefix(arrTags[arrTagIdx].Name, Env.TagPrefix)
 		})
 
 		for _, provider := range providers {
-			existingTag := FindIndex(arrTags, func(tag arr.Tag) bool {
-				return tag.Name == Env.TagPrefix+cleanString(provider)
+			existingTag := utils.FindIndex(arrTags, func(tag utils.Tag) bool {
+				return tag.Name == Env.TagPrefix+utils.CleanString(provider)
 			})
 
-			var tag arr.Tag
+			var tag utils.Tag
 			if existingTag == -1 {
-				debug("- Tag %s not found, creating new one", Env.TagPrefix+cleanString(provider))
-				t, err := app.CreateTag(Env.TagPrefix + cleanString(provider))
+				debug("- Tag %s not found, creating new one", Env.TagPrefix+utils.CleanString(provider))
+				t, err := app.CreateTag(Env.TagPrefix + utils.CleanString(provider))
 				if err != nil {
 					return fmt.Errorf("failed to create tag: %w", err)
 				}
@@ -102,4 +105,10 @@ func Sync(app arr.Arr) error {
 
 	debug("Sync operation finished.")
 	return nil
+}
+
+func debug(format string, args ...any) {
+	if Env.Debug {
+		fmt.Printf(format+"\n", args...)
+	}
 }
